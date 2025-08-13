@@ -1,0 +1,22 @@
+{
+  "name": "One Piecedle — Infinito",
+  "short_name": "Piecedle",
+  "description": "Jogo de adivinhação de One Piece sem limite diário — modo infinito e offline.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b0f15",
+  "theme_color": "#4fd1c5",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

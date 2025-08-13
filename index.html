@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>One Piecedle — Modo Infinito (PWA)</title>
+  <meta name="description" content="Jogo de adivinhação de personagens de One Piece sem limite diário. Instalável (PWA) e offline." />
+  <meta name="theme-color" content="#4fd1c5" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <style>
+    :root{
+      --bg:#0b0f15;--panel:#121825;--muted:#8da2b3;--text:#e6eef6;--accent:#4fd1c5;--bad:#ef5350;--ok:#ffd166;--good:#6ee7a8;
+      --chip:#1b2436;--chip-br:#26324a;--input:#0f1420;--border:#263043;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:linear-gradient(180deg,#0b0f15, #0c1220);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Inter,Arial,sans-serif;
+    }
+    header{max-width:950px;margin:24px auto 8px;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
+    .title{font-weight:800;letter-spacing:.5px;font-size:22px}
+    .title b{color:var(--accent)}
+    .stats{display:flex;gap:12px;font-size:13px;color:var(--muted)}
+    main{max-width:950px;margin:0 auto;padding:0 16px 40px}
+    .card{
+      background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-top:14px;
+      box-shadow:0 6px 18px rgba(0,0,0,.35)
+    }
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .grow{flex:1}
+    input[type="text"]{
+      width:100%;padding:14px 12px;border-radius:10px;border:1px solid var(--border);background:var(--input);color:var(--text);
+      outline:none;font-size:16px
+    }
+    .btn{
+      padding:12px 14px;border:1px solid var(--border);background:var(--chip);color:var(--text);
+      border-radius:10px;cursor:pointer;font-weight:600
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:var(--accent);color:#0a1118;border-color:transparent}
+    .muted{color:var(--muted)}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .chip{
+      background:var(--chip);border:1px solid var(--chip-br);color:var(--text);padding:6px 10px;border-radius:999px;font-size:12px
+    }
+    .hint{display:flex;gap:10px;align-items:center;margin:8px 0;padding:10px;border-radius:10px;background:#0e1524;border:1px dashed var(--border)}
+    .hint strong{color:var(--accent)}
+    .list{margin-top:10px}
+    .attempt{
+      display:grid;grid-template-columns:1fr 120px 140px 120px;gap:8px;align-items:center;
+      background:#0f1526;border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin:8px 0
+    }
+    .pill{padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid var(--chip-br);background:var(--chip);text-align:center}
+    .pill.ok{background:#2a2430;border-color:#3b2f4a;color:#f5d166}
+    .pill.bad{background:#2b1c1d;border-color:#4a2b2d;color:#ff9b97}
+    .pill.good{background:#1b2b22;border-color:#284536;color:#8be0b2}
+    .banner{
+      border:1px solid var(--chip-br);background:linear-gradient(180deg,#0f1b2f,#0e1a2e);
+      padding:14px;border-radius:12px;margin-top:12px
+    }
+    .win{border-color:#264436;background:linear-gradient(180deg,#0f2a23,#112e26)}
+    .center{display:flex;align-items:center;justify-content:center;text-align:center}
+    footer{max-width:950px;margin:16px auto 40px;padding:0 16px;color:var(--muted);font-size:12px}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#0d1320;border:1px solid var(--border);padding:2px 6px;border-radius:6px}
+    .auto-list{position:absolute;background:var(--panel);border:1px solid var(--border);border-radius:10px;margin-top:4px;max-height:220px;overflow:auto;z-index:6;width:100%}
+    .auto-item{padding:10px 12px;cursor:pointer}
+    .auto-item:hover{background:#0e1628}
+    .install-tip{display:none;margin-left:8px;font-size:12px;color:var(--muted)}
+    @media (max-width:720px){
+      .attempt{grid-template-columns:1fr 90px 100px 90px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">One <b>Piecedle</b> — Infinito</div>
+    <div class="stats" id="stats">
+      <div>Jogos: <b id="sGames">0</b></div>
+      <div>Acertos: <b id="sWins">0</b></div>
+      <div>Média tent.: <b id="sAvg">—</b></div>
+      <div>Streak 🔥: <b id="sStreak">0</b></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <label for="guess" class="muted">Digite um personagem (ex.: Luffy, Zoro, Nami)</label>
+          <div style="position:relative">
+            <input id="guess" type="text" placeholder="Seu palpite…" autocomplete="off" />
+            <div id="auto" class="auto-list" style="display:none"></div>
+          </div>
+        </div>
+        <button id="btnTry" class="btn primary">Chutar</button>
+        <button id="btnNext" class="btn">Próxima rodada</button>
+        <span id="installTip" class="install-tip">Dica: instale no celular pelo menu “Adicionar à tela inicial”.</span>
+      </div>
+
+      <div id="hints" class="banner" style="margin-top:16px">
+        <div class="hint"><strong>Dica 1:</strong> <span id="h1">—</span></div>
+        <div class="hint"><strong>Dica 2:</strong> <span id="h2">—</span></div>
+        <div class="hint"><strong>Dica 3:</strong> <span id="h3">—</span></div>
+        <div class="hint"><strong>Dica 4:</strong> <span id="h4">—</span></div>
+        <div class="hint"><strong>Dica 5:</strong> <span id="h5">—</span></div>
+      </div>
+
+      <div class="list" id="attempts"></div>
+
+      <div id="result" class="banner center" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <b>Como jogar</b>
+      <p class="muted">
+        Tente adivinhar o personagem de <b>One Piece</b>. A cada erro, uma nova dica aparece.
+        Não há limite diário — jogue sem parar. Este app é <b>PWA</b>: funciona offline e pode ser instalado.
+        Use <span class="kbd">Enter</span> para chutar.
+      </p>
+      <div class="chips">
+        <div class="chip">PWA (instalável)</div>
+        <div class="chip">Offline</div>
+        <div class="chip">Sem limite diário</div>
+        <div class="chip">Estatísticas locais</div>
+        <div class="chip">Autocompletar</div>
+        <div class="chip">Mobile‑friendly</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Feito por você 💛 — dados de personagens meramente ilustrativos. Amplie a lista em <span class="kbd">PERSONAGENS</span>.
+  </footer>
+
+  <script>
+    // --- PWA bootstrap: registra Service Worker e lida com "Add to Home Screen"
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installTip').style.display = 'inline';
+    });
+
+    // --- UTIL ---
+    const norm = s => s.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9\s\-']/g,"")
+      .replace(/\s+/g," ").trim();
+
+    const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+    const el = id => document.getElementById(id);
+
+    // --- DADOS (adicione mais quando quiser) ---
+    const PERSONAGENS = [
+      {nome:"Monkey D. Luffy", apelidos:["Chapéu de Palha","Mugiwara"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Capitão", geracao:"Supernovas", origem:"East Blue", arma:"Punhos", fruta:"Gomu Gomu no Mi", recompensa:"—"},
+      {nome:"Roronoa Zoro", apelidos:["Caçador de Piratas"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Espadachim", geracao:"Supernovas", origem:"East Blue", arma:"Três espadas", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Nami", apelidos:["Gata Ladra"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Navegadora", geracao:"—", origem:"East Blue", arma:"Clima-Tact", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Usopp", apelidos:["Sogeking"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Atirador", geracao:"—", origem:"East Blue", arma:"Estilingue", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Sanji", apelidos:["Perna Negra"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Cozinheiro", geracao:"—", origem:"North Blue", arma:"Chutes", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Tony Tony Chopper", apelidos:["Amigo do Algodão-Doce"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Médico", geracao:"—", origem:"Drum", arma:"—", fruta:"Hito Hito no Mi", recompensa:"—"},
+      {nome:"Nico Robin", apelidos:["Criança Demônio"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Arqueóloga", geracao:"—", origem:"Ohara", arma:"—", fruta:"Hana Hana no Mi", recompensa:"—"},
+      {nome:"Franky", apelidos:["Cyborg"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Carpinteiro Naval", geracao:"—", origem:"South Blue", arma:"Cyborg", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Brook", apelidos:["Soul King"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Músico", geracao:"—", origem:"West Blue", arma:"Espada/Cana", fruta:"Yomi Yomi no Mi", recompensa:"—"},
+      {nome:"Jinbe", apelidos:["Cavaleiro do Mar"], afiliacao:"Pirata", tripulacao:"Piratas do Chapéu de Palha", funcao:"Timoneiro", geracao:"—", origem:"Ilha dos Homens-Peixe", arma:"Karakusagawara Seiken", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Shanks", apelidos:["Ruivo"], afiliacao:"Pirata", tripulacao:"Piratas do Ruivo", funcao:"Capitão", geracao:"—", origem:"West Blue", arma:"Espada", fruta:"—", recompensa:"—"},
+      {nome:"Buggy", apelidos:["O Palhaço"], afiliacao:"Pirata", tripulacao:"Piratas do Buggy", funcao:"Capitão", geracao:"—", origem:"Grand Line", arma:"Facas", fruta:"Bara Bara no Mi", recompensa:"—"},
+      {nome:"Dracule Mihawk", apelidos:["Olhos de Falcão"], afiliacao:"Pirata", tripulacao:"—", funcao:"Espadachim", geracao:"—", origem:"—", arma:"Yoru", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Portgas D. Ace", apelidos:["Punho de Fogo"], afiliacao:"Pirata", tripulacao:"Piratas do Barba Branca", funcao:"Comandante", geracao:"—", origem:"South Blue", arma:"Punhos", fruta:"Mera Mera no Mi", recompensa:"—"},
+      {nome:"Sabo", apelidos:["Chefe de Estado-Maior"], afiliacao:"Revolucionário", tripulacao:"Exército Revolucionário", funcao:"Nº 2", geracao:"—", origem:"Goa", arma:"Cano", fruta:"Mera Mera no Mi", recompensa:"—"},
+      {nome:"Monkey D. Garp", apelidos:["Herói da Marinha"], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Vice-Almirante", geracao:"—", origem:"East Blue", arma:"Soco", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Sengoku", apelidos:["Buda"], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Almirante da Frota (ex)", geracao:"—", origem:"—", arma:"—", fruta:"Hito Hito no Mi (Modelo Buda)", recompensa:"—"},
+      {nome:"Sakazuki", apelidos:["Akainu"], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Almirante de Frota", geracao:"—", origem:"—", arma:"—", fruta:"Magu Magu no Mi", recompensa:"—"},
+      {nome:"Kuzan", apelidos:["Aokiji"], afiliacao:"—", tripulacao:"—", funcao:"Almirante (ex)", geracao:"—", origem:"—", arma:"—", fruta:"Hie Hie no Mi", recompensa:"—"},
+      {nome:"Borsalino", apelidos:["Kizaru"], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Almirante", geracao:"—", origem:"—", arma:"—", fruta:"Pika Pika no Mi", recompensa:"—"},
+      {nome:"Smoker", apelidos:["Caçador Branco"], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Vice-Almirante", geracao:"—", origem:"—", arma:"Jitte", fruta:"Moku Moku no Mi", recompensa:"—"},
+      {nome:"Tashigi", apelidos:[], afiliacao:"Marinha", tripulacao:"Marinha", funcao:"Capitã", geracao:"—", origem:"—", arma:"Espada", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Crocodile", apelidos:["Mr. 0"], afiliacao:"Pirata", tripulacao:"Baroque Works (ex)", funcao:"Líder", geracao:"—", origem:"—", arma:"—", fruta:"Suna Suna no Mi", recompensa:"—"},
+      {nome:"Donquixote Doflamingo", apelidos:["Joker"], afiliacao:"Pirata", tripulacao:"Piratas Donquixote", funcao:"Capitão", geracao:"—", origem:"—", arma:"—", fruta:"Ito Ito no Mi", recompensa:"—"},
+      {nome:"Trafalgar D. Water Law", apelidos:["Cirurgião da Morte"], afiliacao:"Pirata", tripulacao:"Piratas Heart", funcao:"Capitão", geracao:"Supernovas", origem:"North Blue", arma:"Nodachi", fruta:"Ope Ope no Mi", recompensa:"—"},
+      {nome:"Eustass Kid", apelidos:["Capitão Kid"], afiliacao:"Pirata", tripulacao:"Piratas Kid", funcao:"Capitão", geracao:"Supernovas", origem:"South Blue", arma:"—", fruta:"Jiki Jiki no Mi", recompensa:"—"},
+      {nome:"Edward Newgate", apelidos:["Barba Branca"], afiliacao:"Pirata", tripulacao:"Piratas do Barba Branca", funcao:"Capitão", geracao:"—", origem:"Sphinx", arma:"Naginata", fruta:"Gura Gura no Mi", recompensa:"—"},
+      {nome:"Kaido", apelidos:["Das Feras"], afiliacao:"Pirata", tripulacao:"Piratas das Feras", funcao:"Capitão", geracao:"—", origem:"—", arma:"Kanabo", fruta:"Uo Uo no Mi (Modelo Dragão)", recompensa:"—"},
+      {nome:"Charlotte Linlin", apelidos:["Big Mom"], afiliacao:"Pirata", tripulacao:"Piratas da Big Mom", funcao:"Capitã", geracao:"—", origem:"—", arma:"Napoleão", fruta:"Soru Soru no Mi", recompensa:"—"},
+      {nome:"Marshall D. Teach", apelidos:["Barba Negra"], afiliacao:"Pirata", tripulacao:"Piratas do Barba Negra", funcao:"Capitão", geracao:"—", origem:"—", arma:"—", fruta:"Yami Yami / Gura Gura", recompensa:"—"},
+      {nome:"Nefertari Vivi", apelidos:[], afiliacao:"Civil", tripulacao:"Reino de Alabasta", funcao:"Princesa", geracao:"—", origem:"Alabasta", arma:"Kujakki", fruta:"Nenhuma", recompensa:"—"},
+      {nome:"Carrot", apelidos:[], afiliacao:"Mink", tripulacao:"Mokomo Dukedom", funcao:"Guarda", geracao:"—", origem:"Zou", arma:"Garras", fruta:"Sulong (raça)", recompensa:"—"},
+      {nome:"Yamato", apelidos:["Filho de Kaido"], afiliacao:"Pirata", tripulacao:"—", funcao:"—", geracao:"—", origem:"Wano", arma:"Kanabo", fruta:"Ogri Ogri (mit.)", recompensa:"—"}
+    ];
+
+    // --- ESTADO ---
+    let alvo = null;
+    let reveladas = 0;
+    let terminou = false;
+    let tentativas = 0;
+
+    const stats = JSON.parse(localStorage.getItem("op_stats")||`{"games":0,"wins":0,"attempts":0,"streak":0,"lastWin":0}`);
+
+    function saveStats(){
+      localStorage.setItem("op_stats", JSON.stringify(stats));
+      el("sGames").textContent = stats.games;
+      el("sWins").textContent = stats.wins;
+      el("sStreak").textContent = stats.streak;
+      const avg = stats.wins ? (stats.attempts / stats.wins).toFixed(1) : "—";
+      el("sAvg").textContent = avg;
+    }
+
+    function novaRodada(){
+      alvo = choice(PERSONAGENS);
+      reveladas = 1;
+      terminou = false;
+      tentativas = 0;
+      el("attempts").innerHTML = "";
+      el("result").style.display = "none";
+      gerarDicas();
+      atualizarDicas();
+      el("guess").value = "";
+      el("guess").focus();
+    }
+
+    function gerarDicas(){
+      const tags = [];
+      if(alvo.afiliacao) tags.push(`Afiliação: <b>${alvo.afiliacao}</b>`);
+      if(alvo.tripulacao) tags.push(`Ligação: <b>${alvo.tripulacao}</b>`);
+      if(alvo.funcao) tags.push(`Função: <b>${alvo.funcao}</b>`);
+      if(alvo.fruta && alvo.fruta!=="—" && alvo.fruta!=="Nenhuma") tags.push(`Tem fruta: <b>${alvo.fruta}</b>`);
+      if(alvo.geracao && alvo.geracao!=="—") tags.push(`Geração: <b>${alvo.geracao}</b>`);
+      if(alvo.origem && alvo.origem!=="—") tags.push(`Origem: <b>${alvo.origem}</b>`);
+      if(alvo.arma && alvo.arma!=="—") tags.push(`Arma: <b>${alvo.arma}</b>`);
+      alvo._dicas = shuffle(tags).slice(0,5);
+      while(alvo._dicas.length<5) alvo._dicas.push("Dica genérica: esteve no Novo Mundo.");
+    }
+
+    function atualizarDicas(){
+      for(let i=1;i<=5;i++){
+        el("h"+i).innerHTML = i<=reveladas ? alvo._dicas[i-1] : "—";
+      }
+    }
+
+    function comparar(palpite, alvo){
+      const p = norm(palpite);
+      const nome = norm(alvo.nome);
+      if(p===nome) return true;
+      if(alvo.apelidos){
+        for(const ap of alvo.apelidos){
+          if(norm(ap)===p) return true;
+        }
+      }
+      return false;
+    }
+
+    function chute(){
+      if(terminou) return;
+      const val = el("guess").value.trim();
+      if(!val) return;
+      tentativas++;
+
+      const candidato = PERSONAGENS.find(x => norm(x.nome)===norm(val) || (x.apelidos||[]).some(a=>norm(a)===norm(val)));
+
+      const acertou = comparar(val, alvo);
+      renderAttempt(val, candidato, acertou);
+
+      if(acertou){
+        terminou = true;
+        stats.games++; stats.wins++; stats.attempts += tentativas; stats.streak++;
+        saveStats();
+        el("result").innerHTML =
+          `<div class="win"><b>Acertou!</b> Era <b>${alvo.nome}</b> 🎉 — você levou <b>${tentativas}</b> tentativa(s).<br/>
+            <div class="chips" style="margin-top:8px">
+              ${(alvo.apelidos||[]).map(a=>`<span class="chip">${a}</span>`).join("")}
+            </div>
+          </div>`;
+        el("result").style.display = "block";
+      } else {
+        reveladas = Math.min(5, reveladas+1);
+        atualizarDicas();
+      }
+
+      el("guess").value = "";
+      el("guess").focus();
+    }
+
+    function renderAttempt(texto, cand, ok){
+      const wrap = document.createElement("div");
+      wrap.className = "attempt";
+      const tags = cand ? [
+        badgeMatch(cand.afiliacao, alvo.afiliacao),
+        badgeMatch(cand.funcao, alvo.funcao),
+        badgeMatch(cand.tripulacao, alvo.tripulacao)
+      ] : [
+        {txt:"Desconhecido", cls:"bad"},
+        {txt:"—", cls:"bad"},
+        {txt:"—", cls:"bad"}
+      ];
+      wrap.innerHTML = `
+        <div><b>${escapeHtml(texto)}</b>${cand?`<div class="chips" style="margin-top:4px">
+          ${cand.fruta&&cand.fruta!=="—"?`<span class="chip">Fruta: ${cand.fruta}</span>`:""}
+          ${cand.geracao&&cand.geracao!=="—"?`<span class="chip">Geração: ${cand.geracao}</span>`:""}
+          ${cand.origem&&cand.origem!=="—"?`<span class="chip">Origem: ${cand.origem}</span>`:""}
+        </div>`:""}</div>
+        <div class="pill ${tags[0].cls}">${tags[0].txt}</div>
+        <div class="pill ${tags[1].cls}">${tags[1].txt}</div>
+        <div class="pill ${tags[2].cls}">${tags[2].txt}</div>
+      `;
+      document.getElementById("attempts").prepend(wrap);
+      if(ok){
+        wrap.querySelectorAll(".pill").forEach(p=>{p.classList.remove("bad","ok"); p.classList.add("good");});
+      }
+    }
+
+    function badgeMatch(a,b){
+      if(!a||!b||a==="—"||b==="—") return {txt:a||"—", cls:"ok"};
+      const same = norm(a)===norm(b);
+      return {txt:a, cls:same?"good":"bad"};
+    }
+
+    function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;}
+
+    function escapeHtml(s){return s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]))}
+
+    // --- AUTOCOMPLETAR ---
+    const autoBox = document.getElementById("auto");
+    document.getElementById("guess").addEventListener("input", e=>{
+      const q = norm(e.target.value);
+      if(!q){ autoBox.style.display="none"; return;}
+      const items = PERSONAGENS
+        .filter(p=>norm(p.nome).includes(q) || (p.apelidos||[]).some(a=>norm(a).includes(q)))
+        .slice(0,12);
+      if(items.length===0){ autoBox.style.display="none"; return;}
+      autoBox.innerHTML = items.map(p=>`<div class="auto-item" data-n="${escapeHtml(p.nome)}">${p.nome}</div>`).join("");
+      autoBox.style.display = "block";
+    });
+    autoBox.addEventListener("click", e=>{
+      const it = e.target.closest(".auto-item");
+      if(!it) return;
+      document.getElementById("guess").value = it.getAttribute("data-n");
+      autoBox.style.display = "none";
+      document.getElementById("guess").focus();
+    });
+    document.addEventListener("click", e=>{
+      if(!autoBox.contains(e.target) && e.target!==document.getElementById("guess")) autoBox.style.display="none";
+    });
+
+    // --- CONTROLES ---
+    document.getElementById("btnTry").addEventListener("click", chute);
+    document.getElementById("btnNext").addEventListener("click", ()=>{
+      if(!terminou){
+        stats.games++; stats.streak = 0; saveStats();
+      }
+      novaRodada();
+    });
+    document.getElementById("guess").addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ chute(); }
+    });
+
+    // init
+    saveStats();
+    novaRodada();
+  </script>
+</body>
+</html>
